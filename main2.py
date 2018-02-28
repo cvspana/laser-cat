@@ -171,7 +171,7 @@ while not done:
                 pdown = False            
         
   
-    # --- Game logic should go here
+    # --- Game logic should go heredf
     cat.update()
     coin.update()
     
