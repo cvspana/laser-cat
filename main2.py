@@ -68,21 +68,12 @@ class Coin(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = random.randrange(765)
         self.rect.y = random.randrange(565)
-#class Key(pygame.sprite.Sprite):
- #   def __init__(self):
-  #      pygame.sprite.Sprite.__init__(self)
-   #     self.image = pygame.image.load("key (Custom).png")
-    #    self.rect = slef.image.get_rect
-     #   for i in 25:
-      #      if i <= 1:
-       #         self.rect.x = random.randrange(695)
-        #        self.rect.y = random.randrange(465)
+
 class Laser(pygame.sprite.Sprite):
     velocity = 5+random.randrange(5)
     laserPic = pygame.image.load("laser.bmp").convert_alpha()
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-
         self.image = self.laserPic
         self.rect = self.image.get_rect()
         self.rect.x = random.randrange(790)
@@ -110,41 +101,24 @@ done = False
  
 # Used to manage how fast the screen updates
 clock = pygame.time.Clock()
-pygame.mixer.music.load('music.mp3')
-pygame.mixer.music.play(-1)
+#pygame.mixer.music.load('music.mp3')
+#pygame.mixer.music.play(-1)
 
 
-coin = Coin()
-cat = Cat()
-laser = Laser()
+
+
 all_sprites = pygame.sprite.Group()
 coin_list = pygame.sprite.Group()
 lasers = pygame.sprite.Group()
-for i in range(7):
-    laser = Laser()
-    laser.rect.x = random.randrange(790)
-    laser.rect.y = random.randrange(100)
-    laser.rect.y *= -1
-    all_sprites.add(laser)
-    lasers.add(laser)
-
-#laser2 = Laser(100,-50)
-
+cat = Cat()
+coin = Coin()
 pright = False
 pleft = False
 pup = False
 pdown = False
 press = False
 score = 0
-
-coin_list.add(coin)
-
-
-all_sprites.add(coin)
-all_sprites.add(cat)
-
 internalClock = 0
-
 
 introS = True
 
@@ -152,12 +126,22 @@ text = "Hit Space"
 font = pygame.font.SysFont('wingdings', 40)
 def introScreen():
     screen.fill(WHITE)
-    print("")
-
     intro = font.render(str(text), True, BLACK)
     screen.blit(intro,[350,300])
 
+def clearScreen():
+    all_sprites.remove(all_sprites)
+    lasers.remove(lasers)
+    coin_list.remove(coin_list)
 
+def start():
+    coin_list.add(coin)
+    all_sprites.add(coin)
+    all_sprites.add(cat)
+    for i in range(7):
+        laser = Laser()
+        all_sprites.add(laser)
+        lasers.add(laser)
 # -------- Main Program Loop -----------
 while not done:
     pygame.display.set_caption("Laser Cat" +str(clock.get_fps()))
@@ -194,8 +178,13 @@ while not done:
 
     if introS == True:
         introScreen()
+        clearScreen()
+        internalClock = 0
     else:
         #   --- Game logic should go heredf
+        if (internalClock ==0):
+            start()
+
         cat.update()
         coin.update()
     
@@ -207,9 +196,6 @@ while not done:
 
         if (internalClock%1800 == 0):
             laser = Laser()
-            laser.rect.x = random.randrange(790)
-            laser.rect.y = random.randrange(100)
-            laser.rect.y *= -1
             all_sprites.add(laser)
             lasers.add(laser)
     
@@ -222,15 +208,9 @@ while not done:
 
         hitlaser = pygame.sprite.spritecollide(cat, lasers, False)
         if len(hitlaser) >= 1:
-        
-            done = True
+            introS = True
             print(score)
 
-        
-    
-    
-    
-        
     # --- Drawing code should go here
      
     # First, clear the screen to white. Don't put other drawing commands
