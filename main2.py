@@ -118,7 +118,7 @@ pup = False
 pdown = False
 press = False
 score = 0
-internalClock = 0
+internalClock = 0 #
 
 introS = True
 
