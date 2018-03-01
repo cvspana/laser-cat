@@ -16,24 +16,26 @@ size = (800, 600)
 screen = pygame.display.set_mode(size)
 pygame.display.init()
 # Define some colors
-BLACK    = (   0,   0,   0)
-WHITE    = ( 255, 255, 255)
-GREEN    = (   0, 255,   0)
-RED      = ( 255,   0,   0)
-BLUE = (0,0,255)
+BLACK = (0,   0,   0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255,   0)
+RED = (255,   0,   0)
+BLUE = (0, 0, 255)
 bg = pygame.image.load("Background1.jpg").convert_alpha()
 bg = pygame.transform.scale(bg, [800,600])
 class Cat(pygame.sprite.Sprite):
      catRight = pygame.image.load("cat.png").convert_alpha()
      catLeft = pygame.image.load("cat2.png").convert_alpha()
      def __init__(self):
-
          pygame.sprite.Sprite.__init__(self)
          self.image = self.catRight
          self.rect = self.image.get_rect()
-         self.rect.x = 620
-         self.rect.y = 430
+         self.rect.x = 383
+         self.rect.y = 553
          self.image.set_colorkey(WHITE)
+     def reset(self):
+         self.rect.x = 383
+         self.rect.y = 553
      def update(self):
          if pright == True:
              self.rect.x += 7
@@ -67,7 +69,7 @@ class Coin(pygame.sprite.Sprite):
         self.image = self.coinPic
         self.rect = self.image.get_rect()
         self.rect.x = random.randrange(765)
-        self.rect.y = random.randrange(565)
+        self.rect.y = 100+random.randrange(465)
 
 class Laser(pygame.sprite.Sprite):
     velocity = 5+random.randrange(5)
@@ -86,14 +88,6 @@ class Laser(pygame.sprite.Sprite):
             self.rect.y *= -1
             self.rect.x = random.randrange(790)
             self.velocity = 5+random.randrange(5)
-
-
-        
-
-
-
-
- 
 pygame.display.set_caption("Laser Cat")
  
 #Loop until the user clicks the close button.
@@ -101,11 +95,8 @@ done = False
  
 # Used to manage how fast the screen updates
 clock = pygame.time.Clock()
-#pygame.mixer.music.load('music.mp3')
-#pygame.mixer.music.play(-1)
-
-
-
+pygame.mixer.music.load('music.mp3')
+pygame.mixer.music.play(-1)
 
 all_sprites = pygame.sprite.Group()
 coin_list = pygame.sprite.Group()
@@ -123,7 +114,7 @@ internalClock = 0 #
 introS = True
 
 text = "Hit Space"
-font = pygame.font.SysFont('wingdings', 40)
+font = pygame.font.Font("visitor1.ttf", 40)
 def introScreen():
     screen.fill(WHITE)
     intro = font.render(str(text), True, BLACK)
@@ -138,12 +129,15 @@ def start():
     coin_list.add(coin)
     all_sprites.add(coin)
     all_sprites.add(cat)
+    cat.reset()
     for i in range(7):
         laser = Laser()
         all_sprites.add(laser)
         lasers.add(laser)
 # -------- Main Program Loop -----------
 while not done:
+
+
     pygame.display.set_caption("Laser Cat" +str(clock.get_fps()))
     # --- Main event loop
     for event in pygame.event.get(): # User did something
@@ -176,13 +170,13 @@ while not done:
             elif event.key == pygame.K_DOWN:
                 pdown = False
 
-    if introS == True:
+    if introS:
         introScreen()
         clearScreen()
         internalClock = 0
     else:
         #   --- Game logic should go heredf
-        if (internalClock ==0):
+        if internalClock == 0:
             start()
 
         cat.update()
@@ -194,7 +188,7 @@ while not done:
 
 
 
-        if (internalClock%1800 == 0):
+        if internalClock%1800 == 0:
             laser = Laser()
             all_sprites.add(laser)
             lasers.add(laser)
