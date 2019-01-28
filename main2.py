@@ -15,6 +15,7 @@ pygame.init()
 size = (800, 600)
 screen = pygame.display.set_mode(size)
 pygame.display.init()
+
 # Define some colors
 BLACK = (0,   0,   0)
 WHITE = (255, 255, 255)
@@ -95,8 +96,7 @@ done = False
  
 # Used to manage how fast the screen updates
 clock = pygame.time.Clock()
-pygame.mixer.music.load('music.mp3')
-pygame.mixer.music.play(-1)
+
 
 all_sprites = pygame.sprite.Group()
 coin_list = pygame.sprite.Group()
@@ -130,6 +130,8 @@ def start():
     all_sprites.add(coin)
     all_sprites.add(cat)
     cat.reset()
+    pygame.mixer.music.load('music.mp3')
+    pygame.mixer.music.play(-1)
     for i in range(7):
         laser = Laser()
         all_sprites.add(laser)
@@ -150,12 +152,22 @@ while not done:
             if event.key == pygame.K_LEFT:
                 pleft = True
                 press = False
+            elif event.key == pygame.K_a:
+                pleft = True
+                press = False
             elif event.key == pygame.K_RIGHT:   
+                pright = True
+                press = True
+            elif event.key == pygame.K_d:
                 pright = True
                 press = True
             elif event.key == pygame.K_UP:
                 pup = True
+            elif event.key == pygame.K_w:
+                pup = True
             elif event.key == pygame.K_DOWN:
+                pdown = True
+            elif event.key == pygame.K_s:
                 pdown = True
             elif event.key == pygame.K_ESCAPE:
                 done = True
@@ -163,11 +175,19 @@ while not done:
 
             if event.key == pygame.K_LEFT:
                 pleft = False
+            elif event.key == pygame.K_a:
+                pleft = False
             elif event.key == pygame.K_RIGHT: 
+                pright = False
+            elif event.key == pygame.K_d:
                 pright = False
             elif event.key == pygame.K_UP:
                 pup = False
+            elif event.key == pygame.K_w:
+                pup = False
             elif event.key == pygame.K_DOWN:
+                pdown = False
+            elif event.key == pygame.K_s:
                 pdown = False
 
     if introS:
@@ -204,6 +224,8 @@ while not done:
         if len(hitlaser) >= 1:
             introS = True
             print(score)
+            pygame.mixer.music.stop()
+
 
     # --- Drawing code should go here
      
