@@ -13,7 +13,9 @@ import pygame
 import random
 pygame.init()
 size = (800, 600)
-screen = pygame.display.set_mode(size)
+# SCALED keeps the game at 800x600 internally and stretches it to fit the
+# window/monitor, so F11 fullscreen works without changing any game logic.
+screen = pygame.display.set_mode(size, pygame.SCALED)
 pygame.display.init()
 
 # Define some colors
@@ -118,7 +120,7 @@ font = pygame.font.Font("visitor1.ttf", 40)
 def introScreen():
     screen.fill(WHITE)
     intro = font.render(str(text), True, BLACK)
-    screen.blit(intro,[350,300])
+    screen.blit(intro,[350,300]) 
 
 def clearScreen():
     all_sprites.remove(all_sprites)
@@ -147,6 +149,8 @@ while not done:
             done = True # Flag that we are done so we exit this loop
 
         elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_F11 or (event.key == pygame.K_RETURN and event.mod & pygame.KMOD_ALT):
+                pygame.display.toggle_fullscreen()
             if event.key == pygame.K_SPACE:
                 introS = False
             if event.key == pygame.K_LEFT:
