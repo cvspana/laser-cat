@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, json, random, socket, threading, time
+import argparse, json, random, socket, sys, threading, time
 from dataclasses import dataclass, asdict
 from itertools import count
 from typing import Dict, List, Any, Tuple
@@ -32,6 +32,7 @@ class JSONLineReceiver:
 # =================== WORLD / SPRITES ===================
 WORLD_W, WORLD_H = 800, 600
 TICK_HZ = 60
+DEFAULT_PORT = 50007
 
 # sprite pixel sizes (from your assets)
 CAT_W, CAT_H   = 66, 47
@@ -191,6 +192,8 @@ def rect_overlap(ax, ay, aw, ah, bx, by, bw, bh) -> bool:
     return (ax < bx + bw) and (ax + aw > bx) and (ay < by + bh) and (ay + ah > by)
 
 # =================== SERVER RUNTIME ===================
+# One server per process. It can run standalone (python server.py) or inside
+# the game client for single player / Host Game via start_server().
 state = GameState()
 conns: Dict[int, socket.socket] = {}
 lock = threading.Lock()
@@ -214,14 +217,17 @@ def handle_disconnects(pids: List[int]) -> None:
     if pids:
         broadcast({"type": "leave", "pids": pids})
 
-def client_handler(conn: socket.socket, addr: Tuple[str, int]) -> None:
+def client_handler(conn: socket.socket, addr: Tuple[str, int], stop: threading.Event) -> None:
     pid: int | None = None
     recv = JSONLineReceiver()
     conn.settimeout(0.5)
     try:
         # wait for join
-        while pid is None:
-            data = conn.recv(4096)
+        while pid is None and not stop.is_set():
+            try:
+                data = conn.recv(4096)
+            except socket.timeout:
+                continue
             if not data:
                 raise ConnectionError("no data on join")
             recv.feed(data)
@@ -238,7 +244,7 @@ def client_handler(conn: socket.socket, addr: Tuple[str, int]) -> None:
                     send_json(conn, snap)
                     broadcast({"type": "join", "pid": pid, "name": name})
         # process commands
-        while True:
+        while not stop.is_set():
             try:
                 data = conn.recv(4096)
                 if not data:
@@ -260,10 +266,10 @@ def client_handler(conn: socket.socket, addr: Tuple[str, int]) -> None:
         except Exception:
             pass
 
-def physics_loop():
+def physics_loop(stop: threading.Event) -> None:
     last = time.perf_counter()
     tick = 1.0 / TICK_HZ
-    while True:
+    while not stop.is_set():
         now = time.perf_counter()
         dt = now - last
         last = now
@@ -275,23 +281,80 @@ def physics_loop():
         if elapsed < tick:
             time.sleep(tick - elapsed)
 
+def accept_loop(listener: socket.socket, stop: threading.Event) -> None:
+    while not stop.is_set():
+        try:
+            conn, addr = listener.accept()
+        except socket.timeout:
+            continue
+        except OSError:
+            break  # listener closed by stop()
+        conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        threading.Thread(target=client_handler, args=(conn, addr, stop), daemon=True).start()
+
+class ServerHandle:
+    """A running server, returned by start_server(). Call stop() to shut it down."""
+    def __init__(self, listener: socket.socket, stop: threading.Event) -> None:
+        self._listener = listener
+        self._stop = stop
+        self.port: int = listener.getsockname()[1]
+
+    def stop(self) -> None:
+        self._stop.set()
+        try:
+            self._listener.close()
+        except OSError:
+            pass
+        with lock:
+            open_conns = list(conns.values())
+        for conn in open_conns:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+def start_server(host: str = "0.0.0.0", port: int = DEFAULT_PORT) -> ServerHandle:
+    """Start the server on background threads and return immediately.
+
+    port=0 lets the OS pick a free port (read it back from handle.port).
+    Raises OSError if the port is already in use.
+    """
+    global state
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if sys.platform != "win32":
+        # On Windows SO_REUSEADDR would let two servers share a port silently
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        listener.bind((host, port))
+        listener.listen()
+    except OSError:
+        listener.close()
+        raise
+    listener.settimeout(0.5)
+
+    # Each server gets its own stop event so threads from a previous
+    # (stopped) server can never pick up the new one's state.
+    stop = threading.Event()
+    with lock:
+        state = GameState()
+        conns.clear()
+    threading.Thread(target=physics_loop, args=(stop,), daemon=True).start()
+    threading.Thread(target=accept_loop, args=(listener, stop), daemon=True).start()
+    return ServerHandle(listener, stop)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=50007)
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     args = parser.parse_args()
 
-    threading.Thread(target=physics_loop, daemon=True).start()
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((args.host, args.port))
-        s.listen()
-        print(f"Server listening on {args.host}:{args.port}")
+    handle = start_server(args.host, args.port)
+    print(f"Server listening on {args.host}:{handle.port}")
+    try:
         while True:
-            conn, addr = s.accept()
-            conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            threading.Thread(target=client_handler, args=(conn, addr), daemon=True).start()
+            time.sleep(1)
+    except KeyboardInterrupt:
+        handle.stop()
 
 if __name__ == "__main__":
     main()
